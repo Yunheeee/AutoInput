@@ -8,10 +8,13 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import QObject, pyqtSignal
 from QAnchorButton import AnchorButton
 from QCmdEditer import QCodeEditor
 
 class Ui_MainWindow(object):
+
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(800, 600)
@@ -21,36 +24,38 @@ class Ui_MainWindow(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
-        self.pushButton = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButton.setObjectName("pushButton")
-        self.horizontalLayout.addWidget(self.pushButton)
-        self.pushButton_2 = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButton_2.setObjectName("pushButton_2")
-        self.horizontalLayout.addWidget(self.pushButton_2)
-        self.pushButton_3 = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButton_3.setObjectName("pushButton_3")
-        self.horizontalLayout.addWidget(self.pushButton_3)
-        self.pushButton_4 = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButton_4.setObjectName("pushButton_4")
-        self.horizontalLayout.addWidget(self.pushButton_4)
-        #self.pushButton_5 = QtWidgets.QPushButton(self.centralwidget)
-        #self.pushButton_5.setObjectName("pushButton_5")
-        #self.horizontalLayout.addWidget(self.pushButton_5)
-        #self.pushButton_6 = QtWidgets.QPushButton(self.centralwidget)
-        #self.pushButton_6.setObjectName("pushButton_6")
-        #self.horizontalLayout.addWidget(self.pushButton_6)
-        self.pushButton_7 = AnchorButton(self.centralwidget)
-        self.pushButton_7.setObjectName("pushButton_7")
-        self.horizontalLayout.addWidget(self.pushButton_7)
+        self.newButton = QtWidgets.QPushButton(self.centralwidget)
+        self.newButton.setObjectName("newButton")
+        self.horizontalLayout.addWidget(self.newButton)
+        self.openButton = QtWidgets.QPushButton(self.centralwidget)
+        self.openButton.setObjectName("openButton")
+        self.horizontalLayout.addWidget(self.openButton)
+        self.saveButton = QtWidgets.QPushButton(self.centralwidget)
+        self.saveButton.setObjectName("saveButton")
+        self.horizontalLayout.addWidget(self.saveButton)
+        self.saveasButton = QtWidgets.QPushButton(self.centralwidget)
+        self.saveasButton.setObjectName("saveasButton")
+        self.horizontalLayout.addWidget(self.saveasButton)
+        self.redirectButton = AnchorButton(self.centralwidget)
+        self.redirectButton.setObjectName("redirectButton")
+        self.horizontalLayout.addWidget(self.redirectButton)
         self.label = QtWidgets.QLabel(self.centralwidget)
         self.label.setObjectName("label")
         self.horizontalLayout.addWidget(self.label)
         spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem)
         self.verticalLayout.addLayout(self.horizontalLayout)
-        self.textEdit = QCodeEditor()
-        self.textEdit.setObjectName("textEdit")
-        self.verticalLayout.addWidget(self.textEdit)
+
+
+        self.textEditList = []
+        self.tabWidget = QTabWidget()
+
+        self.textEditList.append(QCodeEditor()) #FIXME:open真正命令文件时 这里可能存在泄漏 待确认
+        self.tabWidget.addTab(self.textEditList[0], "未定义")
+        self.verticalLayout.addWidget(self.tabWidget)
+
+        self.currTextEdit = self.textEditList[0]
+
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 23))
@@ -66,11 +71,12 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.pushButton.setText(_translate("MainWindow", "新建"))
-        self.pushButton_2.setText(_translate("MainWindow", "打开"))
-        self.pushButton_3.setText(_translate("MainWindow", "保存"))
-        self.pushButton_4.setText(_translate("MainWindow", "另存"))
+        self.newButton.setText(_translate("MainWindow", "新建"))
+        self.openButton.setText(_translate("MainWindow", "打开"))
+        self.saveButton.setText(_translate("MainWindow", "保存"))
+        self.saveasButton.setText(_translate("MainWindow", "另存"))
         #self.pushButton_5.setText(_translate("MainWindow", "撤销"))
         #self.pushButton_6.setText(_translate("MainWindow", "重做"))
-        self.pushButton_7.setText(_translate("MainWindow", "定向"))
+        self.redirectButton.setText(_translate("MainWindow", "定向"))
         self.label.setText(_translate("MainWindow", ""))
+

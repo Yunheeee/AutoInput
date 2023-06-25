@@ -15,9 +15,11 @@ v2.0.0:20200414 使用pyQT5实现，解决行号bug，遗留问题：目标窗�
 
 TITLE_TEXT = u"Auto Input    v2.0.0"
 
+from PyQt5 import QtCore, QtGui, QtWidgets
 from untitled import Ui_MainWindow
 from Qhighlighter import PythonHighlighter
-from PyQt5.QtWidgets import  QWidget, QMainWindow, QApplication, QFileDialog
+from QCmdEditer import QCodeEditor
+from PyQt5.QtWidgets import *
 from PyQt5.QtGui import  QIcon
 import win32api
 import win32con
@@ -47,24 +49,43 @@ class AppWindow(QMainWindow):
         self.ui.setupUi(self)
         self.setWindowTitle(TITLE_TEXT)
 
-        self.highlighter = PythonHighlighter(self.ui.textEdit.document())
+        self.highlighter = PythonHighlighter(self.ui.currTextEdit.document())
 
         self.hwin = None
         self.prev_hwin = None
         self.file_name = None
 
-        self.ui.pushButton.setIcon(QIcon("new.png"))
+        self.ui.newButton.setIcon(QIcon("new.png"))
 
-        self.ui.pushButton_7.mousePress.connect(self.mousePressCB)
-        self.ui.pushButton_7.mouseMove.connect(self.mouseMoveCB)
-        self.ui.pushButton_7.mouseRelease.connect(self.mouseReleaseCB)
+        self.ui.redirectButton.mousePress.connect(self.mousePressCB)
+        self.ui.redirectButton.mouseMove.connect(self.mouseMoveCB)
+        self.ui.redirectButton.mouseRelease.connect(self.mouseReleaseCB)
 
-        self.ui.pushButton.clicked.connect(self.new_file)
-        self.ui.pushButton_2.clicked.connect(self.open_file)
-        self.ui.pushButton_3.clicked.connect(self.save_file)
-        self.ui.pushButton_4.clicked.connect(self.save_as)
+        self.ui.newButton.clicked.connect(self.new_file)
+        self.ui.openButton.clicked.connect(self.open_file)
+        self.ui.saveButton.clicked.connect(self.save_file)
+        self.ui.saveasButton.clicked.connect(self.save_as)
 
-        self.ui.textEdit.number_bar.double_clicked.connect(self.send_cmd_event)
+        self.ui.currTextEdit.number_bar.double_clicked.connect(self.send_cmd_event)
+
+        self.ui.tabWidget.currentChanged.connect(self.tabChanged)
+        self.ui.tabWidget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.ui.tabWidget.customContextMenuRequested.connect(self.create_rightmenu)
+
+    def tabNew(self):
+        newEditor = QCodeEditor()
+        self.ui.textEditList.append(newEditor)
+        self.ui.tabWidget.addTab(newEditor, "未定义")
+        #切换到新创建的tab页
+        self.ui.tabWidget.setCurrentIndex(len(self.ui.textEditList) - 1)
+
+        #NOTE:保证新创建的页面均链接到命令发送
+        newEditor.number_bar.double_clicked.connect(self.send_cmd_event)
+
+    def tabChanged(self, idx):
+        print("current:", idx)
+        self.ui.currTextEdit = self.ui.textEditList[idx - 1]
+
 
     def highlightWindow(self, hwnd):
         left, top, right, bottom = win32gui.GetWindowRect(hwnd)
@@ -131,21 +152,15 @@ class AppWindow(QMainWindow):
         "All Files(*);;Text Files(*.txt)")
 
         if input_file:
-            self.file_name = input_file
-            with open(input_file, 'r') as _file:
-                content = _file.read()
-                self.ui.textEdit.setPlainText(content)
-
+            self.ui.textEdit.load_file(input_file)
             self.setWindowTitle("%s   %s" % (TITLE_TEXT, input_file))
         else:
             pass
 
-    def _write_to_file(self, file_name):
+    def _write_to_file(self):
         try:
-            content = self.ui.textEdit.toPlainText()
-
-            with open(file_name, 'w') as the_file:
-                the_file.write(content)
+            for each in self.ui.textEditList:
+                each.save_file(file_name)
         except IOError:
             messagebox.showwarning("保存", "保存失败！")
 
@@ -163,6 +178,7 @@ class AppWindow(QMainWindow):
             self.setWindowTitle("%s    %s" % (TITLE_TEXT, input_file))
 
     def send_cmd_event(self, str):
+        print("send_cmd_event")
         if (self.hwin != None):
 
             try:
@@ -176,6 +192,32 @@ class AppWindow(QMainWindow):
                 self.prev_hwin = None
                 #print ("excption")
                 pass
+
+    #创建右键菜单函数
+    def create_rightmenu(self):
+        print("create_rightmenu")
+        self.menu = QMenu(self)
+
+        self.actionA = QAction('新建页面',self)
+        self.menu.addAction(self.actionA)
+        self.actionB = QAction('删除页面', self)
+        self.menu.addAction(self.actionB)
+
+        self.actionA.triggered.connect(self.tabNew)
+        self.actionB.triggered.connect(self.tabDel)
+
+        self.menu.popup(QtGui.QCursor.pos())
+
+    def tabDel(self):
+        delIdx = self.ui.tabWidget.currentIndex()
+        print(delIdx)
+
+        toDelEditor = self.ui.textEditList[delIdx]
+        self.ui.tabWidget.removeTab(delIdx)
+        self.ui.textEditList.remove(toDelEditor)
+
+
+
 
 
 if __name__ == "__main__":

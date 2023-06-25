@@ -1,3 +1,5 @@
-#! /bin/pythonpyinstaller  -F  -w  "autocmd.py"
+#! /bin/python
 # encoding: utf-8
+
+pyinstaller  -F  -w  autocmd.py
 

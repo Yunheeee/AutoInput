@@ -132,6 +132,7 @@ class QCodeEditor(QPlainTextEdit):
 
 
         def mouseDoubleClickEvent(self, QMoveEvent):
+            print("QMoveEvent")
             str = self.find_loc_block(QMoveEvent.y())
             if(str != None):
                 self.double_clicked.emit(str)
@@ -158,6 +159,23 @@ class QCodeEditor(QPlainTextEdit):
         # 滚动区域周围的边距设置为左侧
 
         self.highligtCurrentLine()
+
+    def load_file(self, filename):
+        if filename:
+            with open(filename, 'r') as _file:
+                content = _file.read()
+                self.setPlainText(content)
+        else:
+            pass
+
+    def save_file(self, filename):
+        try:
+            content = self.toPlainText()
+
+            with open(filename, 'w') as the_file:
+                the_file.write(content)
+        except IOError:
+            messagebox.showwarning("保存", "保存失败！")
 
     def resizeEvent(self, *e):
         '''
