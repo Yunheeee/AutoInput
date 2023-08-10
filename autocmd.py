@@ -10,7 +10,8 @@ import win32gui
 v1.0.1:20191016 及时关闭文件，尝试修复文件内容全部丢失问题
 v1.0.2:20191022 支持中文读取与写入，文件内容丢失问题实际是写入错误
 v1.0.3:20191212 支持动态选择窗口 遗留bug：cmd窗口不会高亮，chrome高亮不会消失，显示类名非应用名，拖动框
-v2.0.0:20200414 使用pyQT5实现，解决行号bug，遗留问题：目标窗口关闭后，工具异常闪退
+v2.0.0:20200414 使用pyQT5实现，解决:wq
+行号bug，遗留问题：目标窗口关闭后，工具异常闪退
 '''
 
 TITLE_TEXT = u"Auto Input    v2.0.0"
@@ -21,6 +22,7 @@ from Qhighlighter import PythonHighlighter
 from QCmdEditer import QCodeEditor
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import  QIcon
+from split_text import Cmd_spliter
 import win32api
 import win32con
 import win32gui
@@ -71,20 +73,44 @@ class AppWindow(QMainWindow):
         self.ui.tabWidget.currentChanged.connect(self.tabChanged)
         self.ui.tabWidget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.ui.tabWidget.customContextMenuRequested.connect(self.create_rightmenu)
+        self.ui.tabWidget.tabBarDoubleClicked.connect(self.tabNameEdit)
 
-    def tabNew(self):
-        newEditor = QCodeEditor()
-        self.ui.textEditList.append(newEditor)
-        self.ui.tabWidget.addTab(newEditor, "未定义")
-        #切换到新创建的tab页
-        self.ui.tabWidget.setCurrentIndex(len(self.ui.textEditList) - 1)
+        self.ui.lineEdit.returnPressed.connect(self.tabNameChannged)
+        self.ui.lineEdit.editingFinished.connect(self.tabNameLeaveEditing)
 
-        #NOTE:保证新创建的页面均链接到命令发送
-        newEditor.number_bar.double_clicked.connect(self.send_cmd_event)
+        self.menu = QMenu(self)
+        self.actionA = QAction('新建页面', self)
+        self.menu.addAction(self.actionA)
+        self.actionB = QAction('删除页面', self)
+        self.menu.addAction(self.actionB)
+
+        self.actionA.triggered.connect(self.tabNew)
+        self.actionB.triggered.connect(self.tabDel)
+
+        #命令分页器及管理
+        self.cmd = Cmd_spliter('')
 
     def tabChanged(self, idx):
-        print("current:", idx)
-        self.ui.currTextEdit = self.ui.textEditList[idx - 1]
+        print("tabChanged current:", idx)
+        self.ui.currTextEdit = self.ui.tabWidget.currentWidget()
+
+    #仅退出
+    def tabNameLeaveEditing(self):
+        self.ui.lineEdit.hide()
+
+    #完成修改
+    def tabNameChannged(self):
+        self.ui.tabWidget.setTabText(self.ui.tabWidget.currentIndex(), self.ui.lineEdit.text())
+        self.ui.lineEdit.hide()
+
+    def tabNameEdit(self, idx):
+        #重新定位置
+        self.ui.lineEdit.setGeometry(self.ui.tabWidget.tabBar().tabRect(idx))
+        #填充当前名称
+        self.ui.lineEdit.setText(self.ui.tabWidget.tabText(idx))
+        self.ui.lineEdit.setFocus() #设置焦点以及时触发编辑退出
+        #显示
+        self.ui.lineEdit.show()
 
 
     def highlightWindow(self, hwnd):
@@ -149,18 +175,38 @@ class AppWindow(QMainWindow):
 
     def open_file(self):
         input_file, fileType = QFileDialog.getOpenFileName(self, "选取文件", os.getcwd(),
-        "All Files(*);;Text Files(*.txt)")
+             "All Files(*);;Text Files(*.txt)")
 
         if input_file:
-            self.ui.textEdit.load_file(input_file)
+            print('filename:',input_file)
+            self.file_name = input_file
+            with open(input_file, 'r') as _file:
+                content = _file.read()
+
+            self.cmd.clear()
+            self.cmd.from_str(content)
+            if(0 == self.cmd.count()):
+                self.cmd.add_key("未定义",content)
+
+            #先清空页签
+            self.tabDelAll()
+
+            for key,value in self.cmd.content().items():
+                print('name:', key, ' content:',value)
+                self.tabNew()
+                self.ui.currTextEdit.setPlainText(value)
+                self.ui.tabWidget.setTabText(self.ui.tabWidget.currentIndex(), key)
+
             self.setWindowTitle("%s   %s" % (TITLE_TEXT, input_file))
         else:
             pass
 
     def _write_to_file(self):
         try:
-            for each in self.ui.textEditList:
-                each.save_file(file_name)
+            content = self.ui.currTextEdit.toPlainText()
+
+            with open(file_name, 'w') as the_file:
+                the_file.write(content)
         except IOError:
             messagebox.showwarning("保存", "保存失败！")
 
@@ -196,25 +242,48 @@ class AppWindow(QMainWindow):
     #创建右键菜单函数
     def create_rightmenu(self):
         print("create_rightmenu")
-        self.menu = QMenu(self)
-
-        self.actionA = QAction('新建页面',self)
-        self.menu.addAction(self.actionA)
-        self.actionB = QAction('删除页面', self)
-        self.menu.addAction(self.actionB)
-
-        self.actionA.triggered.connect(self.tabNew)
-        self.actionB.triggered.connect(self.tabDel)
-
         self.menu.popup(QtGui.QCursor.pos())
+
+    def tabNew(self):
+        print('before> tabcount:', self.ui.tabWidget.count())
+        newEditor = QCodeEditor()
+        self.ui.tabWidget.addTab(newEditor, "未定义")
+
+        #NOTE:保证新创建的页面均链接到命令发送
+        newEditor.number_bar.double_clicked.connect(self.send_cmd_event)
+        self.ui.currTextEdit = newEditor
+        print('after> tabcount:', self.ui.tabWidget.count())
+        # 切换到新创建的tab页
+        self.ui.tabWidget.setCurrentWidget(newEditor)
 
     def tabDel(self):
         delIdx = self.ui.tabWidget.currentIndex()
-        print(delIdx)
+        print('to be delete tab idx:', delIdx)
+        if(delIdx < 0):
+            return
 
-        toDelEditor = self.ui.textEditList[delIdx]
+        toDelEditor = self.ui.tabWidget.currentWidget()
         self.ui.tabWidget.removeTab(delIdx)
-        self.ui.textEditList.remove(toDelEditor)
+        toDelEditor.deleteLater()
+
+        #保留一个默认框
+        print('tabWidget count:', self.ui.tabWidget.count())
+        if(self.ui.tabWidget.count() == 0):
+            self.tabNew()
+
+    def tabDelAll(self):
+        id = 0
+        print('tabDelAll, count:', self.ui.tabWidget.count())
+        #print(type(self.ui.tabWidget.currentWidget()))
+        while self.ui.tabWidget.currentWidget():
+            print('id:',id)
+            id = id+1
+            toDelEditor = self.ui.tabWidget.currentWidget()
+            self.ui.tabWidget.removeTab(self.ui.tabWidget.currentIndex())
+            toDelEditor.deleteLater()
+
+
+
 
 
 
