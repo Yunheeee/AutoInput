@@ -46,18 +46,9 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addItem(spacerItem)
         self.verticalLayout.addLayout(self.horizontalLayout)
 
-        #文本框管理列表
-        self.textEditList = []
         #页签管理器
         self.tabWidget = QTabWidget()
         self.verticalLayout.addWidget(self.tabWidget)
-
-        #创建新文本框 加入管理列表 加入页签
-        self.textEditList.append(QCodeEditor()) #FIXME:open真正命令文件时 这里可能存在泄漏 待确认
-        self.tabWidget.addTab(self.textEditList[0], "未定义")
-
-        #当前文本框
-        self.currTextEdit = self.textEditList[0]
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)

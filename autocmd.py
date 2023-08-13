@@ -51,8 +51,6 @@ class AppWindow(QMainWindow):
         self.ui.setupUi(self)
         self.setWindowTitle(TITLE_TEXT)
 
-        self.highlighter = PythonHighlighter(self.ui.currTextEdit.document())
-
         self.hwin = None
         self.prev_hwin = None
         self.file_name = None
@@ -68,15 +66,13 @@ class AppWindow(QMainWindow):
         self.ui.saveButton.clicked.connect(self.save_file)
         self.ui.saveasButton.clicked.connect(self.save_as)
 
-        self.ui.currTextEdit.number_bar.double_clicked.connect(self.send_cmd_event)
-
         self.ui.tabWidget.currentChanged.connect(self.tabChanged)
         self.ui.tabWidget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.ui.tabWidget.customContextMenuRequested.connect(self.create_rightmenu)
         self.ui.tabWidget.tabBarDoubleClicked.connect(self.tabNameEdit)
 
         self.ui.lineEdit.returnPressed.connect(self.tabNameChannged)
-        self.ui.lineEdit.editingFinished.connect(self.tabNameLeaveEditing)
+        self.ui.lineEdit.editingFinished.connect(self.tabNameChannged)
 
         self.menu = QMenu(self)
         self.actionA = QAction('新建页面', self)
@@ -87,13 +83,16 @@ class AppWindow(QMainWindow):
         self.actionA.triggered.connect(self.tabNew)
         self.actionB.triggered.connect(self.tabDel)
 
+        self.tabNew() #显示默认页签
+
         #命令分页器及管理
-        self.cmd = Cmd_spliter('')
+        #self.cmd = Cmd_spliter('')
 
     def tabChanged(self, idx):
         print("tabChanged current:", idx)
-        self.ui.currTextEdit = self.ui.tabWidget.currentWidget()
-
+        if(-1 != idx):
+            self.currTextEdit = self.ui.tabWidget.currentWidget()
+            self.highlighter = PythonHighlighter(self.currTextEdit.document())  # 影响字符开始偏移 待确认
     #仅退出
     def tabNameLeaveEditing(self):
         self.ui.lineEdit.hide()
@@ -177,36 +176,44 @@ class AppWindow(QMainWindow):
         input_file, fileType = QFileDialog.getOpenFileName(self, "选取文件", os.getcwd(),
              "All Files(*);;Text Files(*.txt)")
 
+
         if input_file:
             print('filename:',input_file)
             self.file_name = input_file
             with open(input_file, 'r') as _file:
                 content = _file.read()
 
-            self.cmd.clear()
-            self.cmd.from_str(content)
-            if(0 == self.cmd.count()):
-                self.cmd.add_key("未定义",content)
+            cmd = Cmd_spliter(content)
+            if(0 == cmd.count()):
+                cmd.add_key("未定义",content)
 
             #先清空页签
             self.tabDelAll()
 
-            for key,value in self.cmd.content().items():
-                print('name:', key, ' content:',value)
+            for each in cmd.content():
+                print(each)
+                print('name:', each['name'], ' content:', each['value'])
                 self.tabNew()
-                self.ui.currTextEdit.setPlainText(value)
-                self.ui.tabWidget.setTabText(self.ui.tabWidget.currentIndex(), key)
+                self.currTextEdit.setPlainText(each['value'])
+                self.ui.tabWidget.setTabText(self.ui.tabWidget.currentIndex(), each['name'])
 
             self.setWindowTitle("%s   %s" % (TITLE_TEXT, input_file))
         else:
             pass
 
-    def _write_to_file(self):
+    def _write_to_file(self, file_name):
         try:
-            content = self.ui.currTextEdit.toPlainText()
+            content = ''
+            cmd = Cmd_spliter('')
 
             with open(file_name, 'w') as the_file:
-                the_file.write(content)
+                for id in range(0, self.ui.tabWidget.count()):
+                    print('write_to id:',id)
+                    cmd.clear()
+                    cmd.add_key(self.ui.tabWidget.tabText(id), self.ui.tabWidget.widget(id).toPlainText())
+                    print(cmd.to_str())
+                    the_file.write(cmd.to_str())
+
         except IOError:
             messagebox.showwarning("保存", "保存失败！")
 
@@ -251,8 +258,9 @@ class AppWindow(QMainWindow):
 
         #NOTE:保证新创建的页面均链接到命令发送
         newEditor.number_bar.double_clicked.connect(self.send_cmd_event)
-        self.ui.currTextEdit = newEditor
+        self.currTextEdit = newEditor
         print('after> tabcount:', self.ui.tabWidget.count())
+
         # 切换到新创建的tab页
         self.ui.tabWidget.setCurrentWidget(newEditor)
 

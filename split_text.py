@@ -1,6 +1,6 @@
 #-*- encoding: utf-8 -*-
 class Cmd_spliter(object):
-    elements = {}
+    elements = []
 
     def __init__(self, text):
         self.from_str(text)
@@ -8,6 +8,7 @@ class Cmd_spliter(object):
     def from_str(self, str):
         parts = str.split("<<<name>>>")
         print(parts)
+        self.clear()
 
         for each in parts:
             if '' != each:
@@ -17,35 +18,43 @@ class Cmd_spliter(object):
                 elif len(arr) >= 2:
                     print(arr)
                     # print('name:', arr[0])
-                    # print('elements:', arr[1])
-                    self.elements[arr[0]] = arr[1]
+                    # print('value:', arr[1])
+                    dict_ele = {}
+                    dict_ele['name'] = arr[0]
+                    dict_ele['value'] = arr[1]
+                    self.elements.append(dict_ele)
                 else:
                     pass
-        print(self.elements)
+        print('len:', len(self.elements), self.elements)
 
     def count(self):
         # print(self.elements)
         return len(self.elements)
 
     def del_key(self, key):
-        self.elements.pop(key)
+        pass #TODO
 
     def add_key(self, key, text):
         # TODO: should check and delete same
-        self.elements[key] = text
+        print(key, text)
+        dict_ele={}
+        dict_ele['name'] = key
+        dict_ele['value'] = text
+        print(dict_ele)
+        self.elements.append(dict_ele)
 
     def text_by_key(self, key):
         return self.elements[key]
 
     def content(self):
-        return self.elements #dict
+        return self.elements #dict in list
 
     def clear(self):
-        return self.elements.clear()
+        self.elements.clear()
 
     def to_str(self):
         text = ""
-        for key, value in self.elements.items():
-            print(key, value)
-            text = text + "<<<name>>>" + key + "<<<name/>>>\n" + value
+        for each in self.elements:
+            print(each['name'], each['value'])
+            text = text + "<<<name>>>" + each['name'] + "<<<name/>>>\n" + each['value']
         return text
